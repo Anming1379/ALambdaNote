@@ -1,0 +1,13 @@
+bin/
+obj/
+publish/
+installer/Output/
+*.user
+.vs/
+tests/**/bin/
+tests/**/obj/
+
+# 仅本机使用的环境交接与临时反馈
+AI-环境交接.txt
+新建 文本文档.txt
+*.log
