@@ -2,7 +2,6 @@ using System.Windows.Documents;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -13,7 +12,6 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using ALambdaNote.Services;
 using ALambdaNote.Views;
-using ICSharpCode.AvalonEdit.Rendering;
 using Microsoft.Win32;
 
 namespace ALambdaNote;
@@ -48,21 +46,6 @@ public partial class MainWindow : Window
     private bool _skipScrollTransfer;
     private bool _renaming;
     private Popup? _openMenu;
-    private bool _adjustingEditorMetrics;
-    private bool _adjustingVisualLineHeights;
-    private double _editorLineSpacingTarget;
-
-    private static readonly FieldInfo? TextViewHeightTreeField =
-        typeof(TextView).GetField("heightTree", BindingFlags.Instance | BindingFlags.NonPublic);
-
-    private static readonly FieldInfo? TextViewDefaultLineHeightField =
-        typeof(TextView).GetField("defaultLineHeight", BindingFlags.Instance | BindingFlags.NonPublic);
-
-    private static readonly FieldInfo? TextViewDefaultTextMetricsValidField =
-        typeof(TextView).GetField("defaultTextMetricsValid", BindingFlags.Instance | BindingFlags.NonPublic);
-
-    private static readonly PropertyInfo? VisualLineHeightProperty =
-        typeof(VisualLine).GetProperty("Height", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
     public MainWindow(AppSettings settings, string? initialFile, bool openedExternally)
     {
@@ -143,9 +126,9 @@ public partial class MainWindow : Window
         Editor.Options.IndentationSize = 4;
         Editor.Options.AllowScrollBelowDocument = false;
         Editor.Options.CutCopyWholeLine = true;
+        Editor.FontFamily = CreateEditorFontFamily();
         Editor.FontSize = Math.Clamp(_settings.EditorFontSize, 11, 32);
         Editor.TextChanged += Editor_TextChanged;
-        Editor.TextArea.TextView.VisualLinesChanged += (_, _) => ApplyVisualLineHeights();
     }
 
     private void RestoreWindowSize()
@@ -162,7 +145,6 @@ public partial class MainWindow : Window
     {
         NativeTheme.Apply(this);
         UpdatePreviewWidth();
-        ApplyEditorLineSpacing();
 
         // 兜底：如果启动/打开路径把空文档留在了预览模式，这里再切回编辑。
         if (_previewMode && string.IsNullOrWhiteSpace(Editor.Text))
@@ -277,7 +259,6 @@ public partial class MainWindow : Window
 
         _colorizer.UpdateStructure(Editor.Document);
         SetMode(false);
-        ApplyEditorLineSpacing();
         UpdateDocumentInfo();
         Editor.Focus();
     }
@@ -333,7 +314,6 @@ public partial class MainWindow : Window
 
             _colorizer.UpdateStructure(Editor.Document);
             Editor.TextArea.TextView.Redraw();
-            ApplyEditorLineSpacing();
 
             // 空文档（包括只有 BOM / 换行的文件）没有可预览的内容；
             // 从资源管理器、拖入或命令行打开时都直接进入编辑模式。
@@ -600,115 +580,19 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// AvalonEdit 的行高由字体度量决定，公开属性 DefaultLineHeight 只读。
-    /// 通过 HeightTree 的默认行高把编辑区行距拉开，并同步当前可视行。
-    /// 这是对 AvalonEdit 行高限制的兼容处理；失败时保留字体自身的行距。
+    /// AvalonEdit 没有公开的 LineHeight 属性；给字体家族设置 2.0 倍行距，
+    /// 让 TextLine、VisualLine、命中测试和光标共享同一套字体度量。
+    /// 这比直接改 VisualLine 高度稳定，不会造成选择/光标错位。
     /// </summary>
-    private void ApplyEditorLineSpacing()
+    private static FontFamily CreateEditorFontFamily()
     {
-        if (_adjustingEditorMetrics)
+        var family = new FontFamily { LineSpacing = 2.0 };
+        family.FamilyMaps.Add(new FontFamilyMap
         {
-            return;
-        }
-
-        var view = Editor.TextArea.TextView;
-        var target = Math.Round(Editor.FontSize * 2.0, MidpointRounding.AwayFromZero);
-        var tree = TextViewHeightTreeField?.GetValue(view);
-        if (tree is null || TextViewDefaultLineHeightField is null || TextViewDefaultTextMetricsValidField is null)
-        {
-            return;
-        }
-
-        try
-        {
-            _adjustingEditorMetrics = true;
-            var treeType = tree.GetType();
-            var defaultLineHeight = treeType.GetProperty("DefaultLineHeight");
-            var getHeight = treeType.GetMethod("GetHeight", new[] { typeof(ICSharpCode.AvalonEdit.Document.DocumentLine) });
-            var setHeight = treeType.GetMethod("SetHeight", new[] { typeof(ICSharpCode.AvalonEdit.Document.DocumentLine), typeof(double) });
-            if (defaultLineHeight is null || getHeight is null || setHeight is null)
-            {
-                return;
-            }
-
-            var oldLineHeight = view.DefaultLineHeight;
-            if (oldLineHeight < 1)
-            {
-                oldLineHeight = target;
-            }
-
-            // 已存在的行保留原来的“视觉行数”，按新行高重算总高度；这样换行行也不会被压扁。
-            foreach (var line in Editor.Document.Lines)
-            {
-                var height = (double)getHeight.Invoke(tree, new object[] { line })!;
-                var visualLineCount = Math.Max(1, (int)Math.Round(height / oldLineHeight));
-                setHeight.Invoke(tree, new object[] { line, target * visualLineCount });
-            }
-
-            defaultLineHeight.SetValue(tree, target);
-            TextViewDefaultLineHeightField.SetValue(view, target);
-            TextViewDefaultTextMetricsValidField.SetValue(view, true);
-            _editorLineSpacingTarget = target;
-            ApplyVisualLineHeights(target);
-
-            view.Redraw();
-            Editor.UpdateLayout();
-        }
-        catch
-        {
-            // 反射实现随 AvalonEdit 版本变化时，静默回退到字体默认行距。
-        }
-        finally
-        {
-            _adjustingEditorMetrics = false;
-        }
-    }
-
-    private void ApplyVisualLineHeights(double? requested = null)
-    {
-        if (_adjustingVisualLineHeights
-            || VisualLineHeightProperty is null
-            || TextViewDefaultLineHeightField is null
-            || TextViewDefaultTextMetricsValidField is null)
-        {
-            return;
-        }
-
-        var view = Editor.TextArea.TextView;
-        var target = requested ?? _editorLineSpacingTarget;
-        if (target <= 0 || !view.VisualLinesValid)
-        {
-            return;
-        }
-
-        try
-        {
-            _adjustingVisualLineHeights = true;
-            var tree = TextViewHeightTreeField?.GetValue(view);
-            if (tree is not null)
-            {
-                tree.GetType().GetProperty("DefaultLineHeight")?.SetValue(tree, target);
-            }
-
-            TextViewDefaultLineHeightField.SetValue(view, target);
-            TextViewDefaultTextMetricsValidField.SetValue(view, true);
-
-            foreach (var visualLine in view.VisualLines)
-            {
-                if (Math.Abs(visualLine.Height - target) > 0.05)
-                {
-                    VisualLineHeightProperty.SetValue(visualLine, target);
-                }
-            }
-        }
-        catch
-        {
-            // 失败时交给 AvalonEdit 默认行高，不影响编辑。
-        }
-        finally
-        {
-            _adjustingVisualLineHeights = false;
-        }
+            Target = "Dubai",
+            Unicode = "0000-FFFF"
+        });
+        return family;
     }
 
     private void ApplyEditorTheme()
@@ -763,7 +647,6 @@ public partial class MainWindow : Window
             var ratio = _previewMode ? CapturePreviewScrollRatio() : double.NaN;
             ThemeManager.Apply(_settings);
             Editor.FontSize = Math.Clamp(_settings.EditorFontSize, 11, 32);
-            ApplyEditorLineSpacing();
             InvalidatePreview();
             SettingsStore.Save(_settings);
             UpdateDocumentInfo();

@@ -73,6 +73,7 @@ internal static class Program
             TestSaveRoundtrip(settings, work);
             TestRename(settings, work);
             TestWheel(settings, work);
+            TestEditorHitTesting(settings, work);
             TestModeScrollSync(settings, work);
             TestDragDrop(settings, work);
             TestDefaultSize();
@@ -695,11 +696,12 @@ internal static class Program
         Pump(300);
 
         var editor = Field<ICSharpCode.AvalonEdit.TextEditor>(window, "Editor");
+        var editorFontSource = editor.FontFamily.Source ?? "";
         Check("editor font is not monospace",
-            !editor.FontFamily.Source.Contains("Mono", StringComparison.OrdinalIgnoreCase)
-            && !editor.FontFamily.Source.Contains("Consolas", StringComparison.OrdinalIgnoreCase)
-            && !editor.FontFamily.Source.Contains("Cascadia", StringComparison.OrdinalIgnoreCase),
-            editor.FontFamily.Source);
+            !editorFontSource.Contains("Mono", StringComparison.OrdinalIgnoreCase)
+            && !editorFontSource.Contains("Consolas", StringComparison.OrdinalIgnoreCase)
+            && !editorFontSource.Contains("Cascadia", StringComparison.OrdinalIgnoreCase),
+            editorFontSource);
         var fileNameButton = Field<Button>(window, "FileNameButton");
         fileNameButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         Pump(60);
@@ -770,7 +772,12 @@ internal static class Program
         Check("wheel step is generous", after - before > editor.TextArea.TextView.DefaultLineHeight, (after - before).ToString("0.0"));
 
         var textView = editor.TextArea.TextView;
+        textView.EnsureVisualLines();
+        var lineGap = textView.VisualLines.Count > 1
+            ? textView.VisualLines[1].VisualTop - textView.VisualLines[0].VisualTop
+            : 0;
         Check("editor line height relaxed", textView.DefaultLineHeight >= editor.FontSize * 1.95, (textView.DefaultLineHeight / editor.FontSize).ToString("F2") + "x");
+        Check("editor line spacing relaxed", lineGap >= editor.FontSize * 1.9, lineGap.ToString("F1") + " dip");
         Check("scrolled visual lines keep relaxed height",
             textView.VisualLinesValid && textView.VisualLines.All(v => Math.Abs(v.Height - textView.DefaultLineHeight) < 0.1),
             textView.VisualLinesValid ? string.Join(",", textView.VisualLines.Select(v => v.Height.ToString("F1")).Distinct().Take(4)) : "invalid");
@@ -794,6 +801,82 @@ internal static class Program
             Pump(100);
             Check("preview wheel scrolls", scroll.VerticalOffset > previewBefore, previewBefore.ToString("0.0") + " -> " + scroll.VerticalOffset.ToString("0.0"));
         }
+
+        window.Close();
+        Pump(100);
+    }
+
+    private static void TestEditorHitTesting(AppSettings settings, string work)
+    {
+        var path = Path.Combine(work, "wrapped.md");
+        var longLine = string.Concat(Enumerable.Repeat("这是一段会被自动换行的长文本，用来检查光标和选中位置。", 24));
+        File.WriteAllText(path, longLine + "\r\n第二行\r\n第三行", new UTF8Encoding(false));
+
+        var window = new MainWindow(settings, path, openedExternally: true);
+        window.Show();
+        Pump(350);
+        var setMode = typeof(MainWindow).GetMethod("SetMode", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        setMode.Invoke(window, new object[] { false });
+        Pump(250);
+
+        var editor = Field<ICSharpCode.AvalonEdit.TextEditor>(window, "Editor");
+        var tv = editor.TextArea.TextView;
+        tv.EnsureVisualLines();
+        Pump(300);
+
+        var wrapped = tv.VisualLines.FirstOrDefault();
+        var textLinesProperty = wrapped?.GetType().GetProperty("TextLines");
+        var textLineCount = 0;
+        if (textLinesProperty?.GetValue(wrapped) is System.Collections.IEnumerable lines)
+        {
+            foreach (var _ in lines)
+            {
+                textLineCount++;
+            }
+        }
+
+        Check("long line wraps visually", textLineCount > 1, textLineCount.ToString());
+        Check(
+            "wrapped visual line keeps all text line height",
+            wrapped is not null && Math.Abs(wrapped.Height - tv.DefaultLineHeight * textLineCount) < 0.2,
+            wrapped is null ? "no visual line" : wrapped.Height.ToString("F1") + " / " + (tv.DefaultLineHeight * textLineCount).ToString("F1"));
+
+        if (wrapped is not null)
+        {
+            var top = wrapped.VisualTop;
+            var hit = tv.GetPosition(new Point(2, top + Math.Min(5, tv.DefaultLineHeight / 2)));
+            Check(
+                "wrapped line hit test stays on first line",
+                hit is { Line: 1 },
+                hit is null ? "null" : hit.Value.Line + ":" + hit.Value.Column);
+
+            // 第二段换行区域也必须命中第一逻辑行，不能落到下一行。
+            var secondSegment = tv.GetVisualPosition(
+                new ICSharpCode.AvalonEdit.TextViewPosition(1, 200),
+                ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineMiddle);
+            var secondHit = tv.GetPosition(new Point(secondSegment.X + 1, secondSegment.Y));
+            Check(
+                "wrapped second segment hit test stays on first line",
+                secondHit is { Line: 1 },
+                secondHit is null ? "null" : secondHit.Value.Line + ":" + secondHit.Value.Column);
+        }
+
+        // 光标矩形应与文本行使用同一套行高，不出现选中位置上下漂移。
+        editor.ScrollToVerticalOffset(0);
+        editor.CaretOffset = 10;
+        Pump(120);
+        var caretRect = editor.TextArea.Caret.CalculateCaretRectangle();
+        var caretVisual = tv.GetVisualPosition(
+            new ICSharpCode.AvalonEdit.TextViewPosition(1, 11),
+            ICSharpCode.AvalonEdit.Rendering.VisualYPosition.LineTop);
+        Check(
+            "caret rectangle aligns with text line",
+            Math.Abs(caretRect.Top - caretVisual.Y) < 2,
+            caretRect.Top.ToString("F1") + " / " + caretVisual.Y.ToString("F1"));
+
+        editor.Select(0, Math.Min(40, editor.Document.TextLength));
+        Pump(120);
+        SaveShot((FrameworkElement)window.Content, "editor-selection.png");
 
         window.Close();
         Pump(100);

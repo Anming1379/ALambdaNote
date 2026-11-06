@@ -5,7 +5,7 @@ by Anming_cat (软件是我用 deepseek 开发的, 代码均由 AI 生成(其实
 轻量、快速、简单的 Markdown / 纯文本编辑器。基于 .NET 10 + WPF，界面走了鲜明但克制、直角、无多余装饰的路线。
 
 GitHub 仓库：<https://github.com/Anming1379/ALambdaNote>  
-最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。
+最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.0**。
 
 ![浅色主题](assets/preview-light.png)
 
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File build-installer.ps1
 脚本会先发布 win-x64 单文件版本，再调用 Inno Setup 6 编译安装包：
 
 ```text
-installer\Output\ALambdaNote-Setup-1.0.0.exe
+installer\Output\ALambdaNote-Setup-1.1.0.exe
 ```
 
 安装包特性：
@@ -114,7 +114,7 @@ dotnet run
 dotnet run --project tests/UiHarness
 ```
 
-覆盖主题与主题色覆盖、编辑区行高（含滚动后的可视行）、编码往返、脏标记、预览渲染、图片加载（含本地 / 远程 / data URI SVG、SVGZ、viewBox-only SVG、无扩展名 SVG、动画 SVG 静态回退与多行 textPath）、空文件默认编辑（空文件 / BOM / 换行）、预览复制、保存写回、文件名单击重命名、滚轮滚动、编辑↔预览滚动同步、拖入打开、原生标题栏深浅标志、默认窗口尺寸、设置窗口结构等。
+覆盖主题与主题色覆盖、编辑区行高（含滚动后的可视行）、自动换行长行的命中测试、光标矩形对齐、编码往返、脏标记、预览渲染、图片加载（含本地 / 远程 / data URI SVG、SVGZ、viewBox-only SVG、无扩展名 SVG、动画 SVG 静态回退与多行 textPath）、空文件默认编辑（空文件 / BOM / 换行）、预览复制、保存写回、文件名单击重命名、滚轮滚动、编辑↔预览滚动同步、拖入打开、原生标题栏深浅标志、默认窗口尺寸、设置窗口结构等。
 
 ## 结构
 
@@ -140,6 +140,13 @@ ALambdaNote/
 ├─ Themes/Styles.xaml            全部控件样式
 └─ tests/UiHarness/              进程内自检
 ```
+
+## 更新记录
+
+### 1.1.0
+
+- 修复编辑区光标和选中位置错位：编辑区行距改由字体度量统一控制，`TextLine`、`VisualLine`、光标矩形和鼠标命中测试共用同一套高度；自动换行的长行、滚动后可视行和从第二段开始选中都不再漂移。
+- 自检新增自动换行长行命中、第二段命中与光标矩形对齐检查。
 
 ## License
 

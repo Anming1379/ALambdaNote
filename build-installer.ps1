@@ -16,7 +16,7 @@ if (-not (Test-Path -LiteralPath $iscc)) {
 Get-Process ALambdaNote -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 300
 
-$version = '1.0.0'
+$version = '1.1.0'
 $project = Join-Path $root 'ALambdaNote.csproj'
 [xml]$xml = Get-Content -LiteralPath $project
 $versions = @($xml.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ })

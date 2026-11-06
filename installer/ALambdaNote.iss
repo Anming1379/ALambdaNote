@@ -1,10 +1,10 @@
 ﻿; ALambda Note Inno Setup script
 ; Build with: powershell -ExecutionPolicy Bypass -File build-installer.ps1
-; Optional: ISCC.exe /DMyAppVersion=1.0.0 installer\ALambdaNote.iss
+; Optional: ISCC.exe /DMyAppVersion=1.1.0 installer\ALambdaNote.iss
 
 #define MyAppName "ALambda Note"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.0"
+  #define MyAppVersion "1.1.0"
 #endif
 #define MyAppPublisher "Anming_cat"
 #define MyAppExeName "ALambdaNote.exe"
