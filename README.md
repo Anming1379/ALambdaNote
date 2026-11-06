@@ -1,6 +1,6 @@
 # ALambda Note
 
-by Anming_cat
+by Anming_cat (软件是我用 deepseek 开发的, 代码均由 AI 生成(其实README也是)
 
 轻量、快速、简单的 Markdown / 纯文本编辑器。基于 .NET 10 + WPF，界面走了鲜明但克制、直角、无多余装饰的路线。
 
