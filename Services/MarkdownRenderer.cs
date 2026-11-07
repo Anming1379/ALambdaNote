@@ -563,7 +563,11 @@ public sealed class MarkdownRenderer
     private void AddCode(CodeBlock codeBlock, string? info, BlockCollection target, Ctx ctx)
     {
         var style = ctx.Style;
-        var code = codeBlock.Lines.ToString().Replace("\t", "    ").TrimEnd('\r', '\n');
+        var code = codeBlock.Lines.ToString()
+            .Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Replace("\t", "    ")
+            .TrimEnd('\n');
         var fontSize = Math.Max(12, style.FontSize - 1);
 
         var section = new Section

@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>ALambdaNote</AssemblyName>
     <RootNamespace>ALambdaNote</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Product>ALambda Note</Product>
     <Authors>Anming_cat</Authors>
     <ApplicationTitle>ALambda Note</ApplicationTitle>
@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <Resource Include="assets\MaterialSymbolsSharp.ttf" />
+    <Resource Include="assets\Lekton-Regular.ttf" />
     <Resource Include="assets\app.ico" />
   </ItemGroup>
 

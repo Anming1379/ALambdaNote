@@ -3,7 +3,7 @@
 
     <!-- 字体：正文使用系统 UI 字体，编辑区使用行高更松的比例字体，代码预览保留等宽字体，图标来自打包的 Material Symbols Sharp -->
     <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI</FontFamily>
-    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Microsoft YaHei UI</FontFamily>
+    <FontFamily x:Key="MonoFont">pack://application:,,,/ALambdaNote;component/assets/Lekton-Regular.ttf#Lekton, Microsoft YaHei UI</FontFamily>
     <FontFamily x:Key="IconFont">pack://application:,,,/ALambdaNote;component/assets/MaterialSymbolsSharp.ttf#Material Symbols Sharp</FontFamily>
 
     <Style x:Key="ToolIcon" TargetType="TextBlock">

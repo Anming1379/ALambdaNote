@@ -119,6 +119,9 @@ internal static class Program
     {
         Check("styles loaded: BodyFont", Application.Current.TryFindResource("BodyFont") is FontFamily);
         Check("styles loaded: IconFont", Application.Current.TryFindResource("IconFont") is FontFamily);
+        var monoFont = Application.Current.TryFindResource("MonoFont") as FontFamily;
+        Check("styles loaded: MonoFont", monoFont is not null);
+        Check("markdown code font is Lekton", monoFont?.Source.Contains("Lekton", StringComparison.OrdinalIgnoreCase) == true, monoFont?.Source ?? "null");
         Check("default editor font size 17", Math.Abs(new AppSettings().EditorFontSize - 17) < 0.01, new AppSettings().EditorFontSize.ToString());
 
         File.WriteAllText(settingsPath, @"{""EditorFontSize"":15}", new UTF8Encoding(false));
@@ -587,13 +590,21 @@ internal static class Program
             .OfType<Run>()
             .FirstOrDefault(run => run.Text == "行内代码");
         Check("inline code follows accent", inlineCodeRun is not null && BrushColor(inlineCodeRun.Foreground) == ThemeManager.Accent, inlineCodeRun is null ? "not found" : BrushColor(inlineCodeRun.Foreground).ToString());
-        var fencedCodeRun = WalkBlocks(document.Blocks)
+        var allCodeRuns = WalkBlocks(document.Blocks)
             .OfType<Paragraph>()
             .SelectMany(paragraph => EnumerateInlines(paragraph.Inlines))
             .OfType<Run>()
-            .FirstOrDefault(run => run.Text == "var x = 1;");
+            .ToList();
+        var fencedCodeRun = allCodeRuns.FirstOrDefault(run => run.Text == "var x = 1;");
         Check("fenced code follows accent", fencedCodeRun is not null && BrushColor(fencedCodeRun.Foreground) == ThemeManager.Accent,
             fencedCodeRun is null ? "not found" : BrushColor(fencedCodeRun.Foreground).ToString());
+        Check("inline code uses Lekton", inlineCodeRun?.FontFamily.Source.Contains("Lekton", StringComparison.OrdinalIgnoreCase) == true,
+            inlineCodeRun?.FontFamily.Source ?? "not found");
+        Check("fenced code uses Lekton", fencedCodeRun?.FontFamily.Source.Contains("Lekton", StringComparison.OrdinalIgnoreCase) == true,
+            fencedCodeRun?.FontFamily.Source ?? "not found");
+        fencedCodeRun?.BringIntoView();
+        Pump(250);
+        SaveShot((FrameworkElement)window.Content, "preview-code-lekton.png");
         Check("local image loaded", FindImageHosts(document).Any(h => h.Child is Image));
 
         try
@@ -1065,6 +1076,7 @@ internal static class Program
 
 ```csharp
 var x = 1;
+// 中文注释
 ```
 
 ![本地图片](local.png)

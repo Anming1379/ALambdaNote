@@ -5,7 +5,7 @@ by Anming_cat (软件是我用 deepseek 开发的, 代码均由 AI 生成(其实
 轻量、快速、简单的 Markdown / 纯文本编辑器。基于 .NET 10 + WPF，界面走了鲜明但克制、直角、无多余装饰的路线。
 
 GitHub 仓库：<https://github.com/Anming1379/ALambdaNote>  
-最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.0**。
+最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.1**。
 
 ![浅色主题](assets/preview-light.png)
 
@@ -14,7 +14,7 @@ GitHub 仓库：<https://github.com/Anming1379/ALambdaNote>
 ## 功能
 
 - Markdown 与纯文本编辑，始终按 Markdown 语法高亮，不依赖文件后缀。
-- 编辑区默认 17 号字，使用 Dubai / Segoe UI 比例字体，不做等宽排版；编辑区行距按 2.0 倍字号拉开，滚动到任意位置都保持同样的行高。工具栏文件名单击（或按 F2）可以重命名当前文件；未保存文件会先直接编辑名字，不弹保存对话框。
+- 编辑区默认 17 号字，使用 Dubai / Segoe UI 比例字体，不做等宽排版；编辑区行距按 2.0 倍字号拉开，滚动到任意位置都保持同样的行高。预览里的代码使用随包内置的 Lekton 等宽字体，中文字符自动回退到系统字体。工具栏文件名单击（或按 F2）可以重命名当前文件；未保存文件会先直接编辑名字，不弹保存对话框。
 - 一级标题使用主题色 300 字重并居中显示，二级标题使用主题色 300 字重左对齐，三级到六级标题字号层级继续拉开；编辑区的标题、代码块和分隔线同样使用主题色。
 - Markdown 预览支持标题、段落、粗体/斜体/删除线/高亮/上下标、行内代码、围栏代码块、引用、GitHub 风格提示块、有序/无序/任务/嵌套列表、表格、分割线、链接、脚注、定义列表、本地与网页图片，以及 HTML `<img>`；图片支持 SVG / SVGZ 和 data URI。行内代码、围栏代码、列表符号、任务勾选、表头、定义术语、分割线和链接都会跟随主题色。无序列表圆点用几何图形绘制，避免字体基线造成的上下偏移。
 - 预览模式只读，可选中复制；链接、图片和加载失败的占位块都可以点击，交给系统浏览器打开。
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File build-installer.ps1
 脚本会先发布 win-x64 单文件版本，再调用 Inno Setup 6 编译安装包：
 
 ```text
-installer\Output\ALambdaNote-Setup-1.1.0.exe
+installer\Output\ALambdaNote-Setup-1.1.1.exe
 ```
 
 安装包特性：
@@ -103,6 +103,7 @@ dotnet run
 - [AvalonEdit](https://github.com/icsharpcode/AvalonEdit)：编辑区与语法高亮的基础设施
 - [Markdig](https://github.com/xoofx/markdig)：Markdown 解析，渲染由项目内的 `MarkdownRenderer` 翻译成 WPF `FlowDocument`
 - [SharpVectors](https://github.com/ElinamLLC/SharpVectors)：SVG / SVGZ 解析与 WPF 矢量渲染
+- Lekton：Markdown 预览代码等宽字体（SIL OFL 1.1，见 `assets/Lekton-OFL.txt`）
 
 仓库里的 `NuGet.config` 只保留了 `nuget.azure.cn` 镜像（本机直连 nuget.org 会 SSL EOF）。换环境时按需调整。
 
@@ -142,6 +143,12 @@ ALambdaNote/
 ```
 
 ## 更新记录
+
+### 1.1.1
+
+- Markdown 预览中的围栏代码、行内代码和数学公式改用随包内置的 Lekton 等宽字体；中文和缺失字形自动回退到系统字体。
+- 修复 CRLF 换行源码中代码块行尾残留 `\r` 的问题。
+- 自检新增 Lekton 字体资源、行内代码和围栏代码字体检查。
 
 ### 1.1.0
 
