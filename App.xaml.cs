@@ -40,6 +40,12 @@ public partial class App : Application
                 // 忽略日志失败。
             }
 
+            if (MainWindow is { WindowState: WindowState.Minimized } minimized)
+            {
+                minimized.WindowState = WindowState.Normal;
+                minimized.Activate();
+            }
+
             FlatDialog.Info(MainWindow, "出了点小问题", args.Exception.Message);
             args.Handled = true;
         };

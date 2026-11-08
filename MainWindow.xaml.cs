@@ -81,6 +81,7 @@ public partial class MainWindow : Window
         PreviewDragLeave += MainWindow_DragLeave;
         PreviewDrop += MainWindow_Drop;
         Loaded += MainWindow_Loaded;
+        StateChanged += MainWindow_StateChanged;
         SourceInitialized += (_, _) => NativeTheme.Apply(this);
         PreviewHost.SizeChanged += (_, _) => UpdatePreviewWidth();
         PreviewViewer.PreviewMouseRightButtonUp += PreviewViewer_PreviewMouseRightButtonUp;
@@ -154,17 +155,48 @@ public partial class MainWindow : Window
             _skipScrollTransfer = false;
         }
 
-        RootGrid.Opacity = 0;
-        RootGrid.BeginAnimation(
-            OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            });
+        // 不在启动时把整窗从透明渐变到可见。
+        // 如果用户在动画期间最小化，动画可能停在 0，恢复/最大化后就会
+        // 只剩窗口背景，看起来像白屏或黑屏。内容始终保持可见。
+        RestoreContentVisibility();
         if (!_previewMode)
         {
             Editor.Focus();
         }
+    }
+
+    private void MainWindow_StateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            StopSmoothScroll();
+            return;
+        }
+
+        // 从最小化恢复或最大化后，强制把内容层恢复为可见，并重绘一次。
+        // Windows 10 上窗口合成状态切换后偶尔不会自动刷新客户区。
+        RestoreContentVisibility();
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            NativeTheme.Apply(this);
+            InvalidateVisual();
+            UpdateLayout();
+            Editor.TextArea.TextView.Redraw();
+            PreviewViewer.InvalidateVisual();
+        }));
+    }
+
+    private void RestoreContentVisibility()
+    {
+        RootGrid.BeginAnimation(OpacityProperty, null);
+        RootGrid.Opacity = 1;
+
+        EditorHost.BeginAnimation(OpacityProperty, null);
+        EditorHost.Opacity = 1;
+        PreviewHost.BeginAnimation(OpacityProperty, null);
+        PreviewHost.Opacity = 1;
+        DropOverlay.BeginAnimation(OpacityProperty, null);
+        DropOverlay.Opacity = 1;
     }
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
@@ -416,6 +448,16 @@ public partial class MainWindow : Window
         if (!IsDirty)
         {
             return true;
+        }
+
+        // 最小化时 Owner 也是 IsVisible=true，但确认框会跟着藏到任务栏后面，
+        // 用户看起来就是“点了关闭却关不掉”。先把主窗恢复并激活。
+        if (WindowState == WindowState.Minimized)
+        {
+            // 这里可能正处在 Closing 中，不能调用 Show()（WPF 会抛
+            // “窗口关闭期间无法 Show”），只恢复状态并激活即可。
+            WindowState = WindowState.Normal;
+            Activate();
         }
 
         var choice = FlatDialog.AskSave(this);

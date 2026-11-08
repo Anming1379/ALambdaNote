@@ -68,6 +68,8 @@ internal static class Program
             TestLooseImage(settings, work);
             TestSvgImages(settings, work);
             TestNewWindow(settings);
+            TestWindowStateRecovery(settings);
+            TestMinimizedClose(settings);
             TestOpenMarkdown(settings, work);
             TestEmptyFileOpensEditor(settings, work);
             TestSaveRoundtrip(settings, work);
@@ -500,6 +502,91 @@ internal static class Program
 
         window.Close();
         Pump(120);
+    }
+
+    private static void TestWindowStateRecovery(AppSettings settings)
+    {
+        var window = new MainWindow(settings, null, openedExternally: false);
+        window.Show();
+        Pump(450);
+
+        var root = Field<Grid>(window, "RootGrid");
+        var editorHost = Field<Border>(window, "EditorHost");
+        Check("startup content is opaque", root.Opacity >= 0.99, root.Opacity.ToString("F2"));
+
+        window.WindowState = WindowState.Minimized;
+        Pump(250);
+        Check("window minimizes", window.WindowState == WindowState.Minimized, window.WindowState.ToString());
+
+        window.WindowState = WindowState.Maximized;
+        Pump(550);
+        Check("maximized content is opaque", root.Opacity >= 0.99, root.Opacity.ToString("F2"));
+        Check("maximized editor is opaque", editorHost.Opacity >= 0.99, editorHost.Opacity.ToString("F2"));
+        var metrics = RenderWindow(window);
+        Check("maximized window renders non blank", metrics.DistinctColors > 6, metrics.DistinctColors.ToString());
+
+        window.WindowState = WindowState.Normal;
+        Pump(250);
+        window.Close();
+        Pump(120);
+    }
+
+    private static void TestMinimizedClose(AppSettings settings)
+    {
+        var window = new MainWindow(settings, null, openedExternally: false);
+        window.Show();
+        Pump(350);
+
+        var editor = Field<ICSharpCode.AvalonEdit.TextEditor>(window, "Editor");
+        editor.Text = "# 未保存";
+        Pump(180);
+        Check("minimized close test is dirty", IsDirty(window));
+
+        window.WindowState = WindowState.Minimized;
+        Pump(220);
+        Check("minimized close starts minimized", window.WindowState == WindowState.Minimized, window.WindowState.ToString());
+
+        FlatDialog? dialog = null;
+        var sawVisibleDialog = false;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        var ticks = 0;
+        timer.Tick += (_, _) =>
+        {
+            ticks++;
+            dialog ??= Application.Current.Windows.OfType<FlatDialog>().FirstOrDefault();
+            if (dialog is null)
+            {
+                if (ticks > 40)
+                {
+                    timer.Stop();
+                }
+                return;
+            }
+
+            sawVisibleDialog |= dialog.IsVisible;
+            var panel = FindDescendant<StackPanel>(dialog);
+            var dismiss = panel?.Children.OfType<Button>()
+                .FirstOrDefault(button => (button.Content as string) == "不保存");
+            if (dismiss is not null)
+            {
+                timer.Stop();
+                dismiss.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            }
+        };
+        timer.Start();
+        window.Close();
+        timer.Stop();
+        Pump(350);
+
+        Check("minimized unsaved close shows dialog", sawVisibleDialog);
+        Check("minimized unsaved close succeeds", !window.IsVisible);
+        Check("minimized unsaved close restores owner", window.WindowState == WindowState.Normal, window.WindowState.ToString());
+
+        if (window.IsVisible)
+        {
+            window.Close();
+            Pump(120);
+        }
     }
 
     private static void TestOpenMarkdown(AppSettings settings, string work)

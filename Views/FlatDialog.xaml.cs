@@ -51,7 +51,12 @@ public partial class FlatDialog : Window
         IReadOnlyList<(string Text, DialogChoice Choice, bool Primary)> buttons)
     {
         var dialog = new FlatDialog();
-        if (owner is not null && owner.IsVisible)
+        // 最小化的 Owner 仍然 IsVisible=true，但 CenterOwner 会把对话框
+        // 放到不可见的位置；这种时候退化为屏幕居中，并显示在任务栏里。
+        var ownerUsable = owner is not null
+            && owner.IsVisible
+            && owner.WindowState != WindowState.Minimized;
+        if (ownerUsable)
         {
             dialog.Owner = owner;
             dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -59,6 +64,7 @@ public partial class FlatDialog : Window
         else
         {
             dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            dialog.ShowInTaskbar = true;
         }
 
         dialog.Title = title;
@@ -90,7 +96,11 @@ public partial class FlatDialog : Window
             dialog.ButtonsPanel.Children.Add(button);
         }
 
-        dialog.Loaded += (_, _) => primaryButton?.Focus();
+        dialog.Loaded += (_, _) =>
+        {
+            dialog.Activate();
+            primaryButton?.Focus();
+        };
 
         dialog.KeyDown += (_, e) =>
         {

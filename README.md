@@ -5,7 +5,7 @@ by Anming_cat (软件是我用 deepseek 开发的, 代码均由 AI 生成(其实
 轻量、快速、简单的 Markdown / 纯文本编辑器。基于 .NET 10 + WPF，界面走了鲜明但克制、直角、无多余装饰的路线。
 
 GitHub 仓库：<https://github.com/Anming1379/ALambdaNote>  
-最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.1**。
+最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.2**。
 
 ![浅色主题](assets/preview-light.png)
 
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File build-installer.ps1
 脚本会先发布 win-x64 单文件版本，再调用 Inno Setup 6 编译安装包：
 
 ```text
-installer\Output\ALambdaNote-Setup-1.1.1.exe
+installer\Output\ALambdaNote-Setup-1.1.2.exe
 ```
 
 安装包特性：
@@ -143,6 +143,13 @@ ALambdaNote/
 ```
 
 ## 更新记录
+
+### 1.1.2
+
+- 修复窗口最小化且存在未保存修改时，关闭确认框被藏在任务栏后、软件无法关闭的问题；关闭前会先恢复并激活主窗口。
+- 修复启动淡入动画在最小化时停在透明状态，导致最大化黑屏、强制关闭后重新启动白屏的问题；启动和窗口状态切换不再使用整窗淡入。
+- 窗口从最小化恢复或最大化后会强制恢复内容层可见性并重绘客户区，避免 Windows 10 合成状态切换后出现黑屏。
+- 自检新增最小化关闭、启动可见性、最大化重绘和非空白渲染检查。
 
 ### 1.1.1
 
