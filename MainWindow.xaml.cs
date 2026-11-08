@@ -2,6 +2,7 @@ using System.Windows.Documents;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -81,6 +82,7 @@ public partial class MainWindow : Window
         PreviewDragLeave += MainWindow_DragLeave;
         PreviewDrop += MainWindow_Drop;
         Loaded += MainWindow_Loaded;
+        ContentRendered += (_, _) => RefreshNativeWindow();
         StateChanged += MainWindow_StateChanged;
         SourceInitialized += (_, _) => NativeTheme.Apply(this);
         PreviewHost.SizeChanged += (_, _) => UpdatePreviewWidth();
@@ -159,6 +161,10 @@ public partial class MainWindow : Window
         // 如果用户在动画期间最小化，动画可能停在 0，恢复/最大化后就会
         // 只剩窗口背景，看起来像白屏或黑屏。内容始终保持可见。
         RestoreContentVisibility();
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            RefreshNativeWindow();
+        }));
         if (!_previewMode)
         {
             Editor.Focus();
@@ -183,6 +189,7 @@ public partial class MainWindow : Window
             UpdateLayout();
             Editor.TextArea.TextView.Redraw();
             PreviewViewer.InvalidateVisual();
+            RefreshNativeWindow();
         }));
     }
 
@@ -198,6 +205,49 @@ public partial class MainWindow : Window
         DropOverlay.BeginAnimation(OpacityProperty, null);
         DropOverlay.Opacity = 1;
     }
+
+    /// <summary>
+    /// Windows 10 的 DWM 偶尔不会把 WPF 已经绘制好的客户区提交到屏幕，
+    /// 表现为白屏/黑屏但窗口仍然响应。强制原生重绘并等待 DWM 刷新。
+    /// </summary>
+    private void RefreshNativeWindow()
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
+        try
+        {
+            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            const uint rdwInvalidate = 0x0001;
+            const uint rdwErase = 0x0004;
+            const uint rdwAllChildren = 0x0080;
+            const uint rdwUpdateNow = 0x0100;
+            const uint rdwFrame = 0x0400;
+            RedrawWindow(
+                handle,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                rdwInvalidate | rdwErase | rdwAllChildren | rdwUpdateNow | rdwFrame);
+            DwmFlush();
+        }
+        catch
+        {
+            // 刷新失败不应影响编辑。
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool RedrawWindow(IntPtr hWnd, IntPtr updateRect, IntPtr updateRegion, uint flags);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmFlush();
 
     private void MainWindow_Closing(object? sender, CancelEventArgs e)
     {

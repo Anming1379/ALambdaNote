@@ -31,9 +31,14 @@ public static class NativeTheme
             DwmSetWindowAttribute(handle, DwmwaUseImmersiveDarkModeLegacy, ref dark, sizeof(int));
         }
 
-        SetColor(handle, DwmwaCaptionColor, ThemeManager.Brush("Surface"));
-        SetColor(handle, DwmwaBorderColor, ThemeManager.Brush("Border"));
-        SetColor(handle, DwmwaTextColor, ThemeManager.Brush("Text"));
+        // 这三个颜色属性是 Windows 11 才支持的；Windows 10 上只保留
+        // 深色标题栏标志，避免旧 DWM 对未知属性做出异常处理。
+        if (Environment.OSVersion.Version.Build >= 22000)
+        {
+            SetColor(handle, DwmwaCaptionColor, ThemeManager.Brush("Surface"));
+            SetColor(handle, DwmwaBorderColor, ThemeManager.Brush("Border"));
+            SetColor(handle, DwmwaTextColor, ThemeManager.Brush("Text"));
+        }
     }
 
     private static void SetColor(IntPtr handle, int attribute, Brush brush)

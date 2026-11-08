@@ -5,7 +5,7 @@ by Anming_cat (软件是我用 deepseek 开发的, 代码均由 AI 生成(其实
 轻量、快速、简单的 Markdown / 纯文本编辑器。基于 .NET 10 + WPF，界面走了鲜明但克制、直角、无多余装饰的路线。
 
 GitHub 仓库：<https://github.com/Anming1379/ALambdaNote>  
-最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.2**。
+最新安装包见 [Releases](https://github.com/Anming1379/ALambdaNote/releases)。当前版本：**v1.1.3**。
 
 ![浅色主题](assets/preview-light.png)
 
@@ -81,7 +81,7 @@ powershell -ExecutionPolicy Bypass -File build-installer.ps1
 脚本会先发布 win-x64 单文件版本，再调用 Inno Setup 6 编译安装包：
 
 ```text
-installer\Output\ALambdaNote-Setup-1.1.2.exe
+installer\Output\ALambdaNote-Setup-1.1.3.exe
 ```
 
 安装包特性：
@@ -143,6 +143,13 @@ ALambdaNote/
 ```
 
 ## 更新记录
+
+### 1.1.3
+
+- Windows 10 默认使用 WPF 软件渲染，避开旧显卡/驱动在硬件合成下出现的启动白屏；Windows 11 继续使用硬件渲染。需要强制硬件渲染时可设置环境变量 `ALAMBDA_HARDWARE_RENDERING=1`。
+- Windows 10 不再设置只有 Windows 11 支持的 DWM 标题栏颜色属性。
+- 启动、从最小化恢复和最大化后增加原生 `RedrawWindow` + `DwmFlush`，确保客户区真正提交到屏幕。
+- 新增 `ALAMBDA_SOFTWARE_RENDERING=1` 用于手动强制软件渲染，方便排查显卡问题。
 
 ### 1.1.2
 

@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>ALambdaNote</AssemblyName>
     <RootNamespace>ALambdaNote</RootNamespace>
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
     <Product>ALambda Note</Product>
     <Authors>Anming_cat</Authors>
     <ApplicationTitle>ALambda Note</ApplicationTitle>
